@@ -33,6 +33,9 @@ AS_SOURCES = $(wildcard $(SRCDIR)/*.s)
 OBJS = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(C_SOURCES)) \
        $(patsubst $(SRCDIR)/%.s, $(OBJDIR)/%.o, $(AS_SOURCES))
 
+%.o: %.c $(HEADERS)
+	$(CC) -c $< -o $@ $(CFLAGS)
+
 lint:
 	clang-tidy $(C_SOURCES) -- \
 		-target i386-pc-none-elf \
@@ -46,6 +49,7 @@ format:
 	clang-format -i $(C_SOURCES) $(wildcard $(INCDIR)/*.h)
 
 all: $(OBJDIR)/kernel.elf
+	rm -f qemu.log
 
 $(OBJDIR)/kernel.elf: $(OBJS)
 	$(LD) $(LDFLAGS) $(OBJS) -o $@

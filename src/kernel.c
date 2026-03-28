@@ -3,6 +3,7 @@
 #include "kernel.h"
 #include "keyboard.h"
 #include "mem.h"
+#include "paging.h"
 #include "pic.h"
 #include "shell.h"
 #include "vga.h"
@@ -12,7 +13,7 @@
 #endif
 
 #if !defined(__i386__)
-#error "This tutorial needs to be compiled with a ix86-elf compiler"
+#error "Need to be compiled with a ix86-elf compiler"
 #endif
 
 void kernel_main(void)

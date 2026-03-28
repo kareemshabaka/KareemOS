@@ -2,22 +2,30 @@ ENTRY(_start)
 
 SECTIONS
 {
-    . = 1M;
+    . = 0x00100000;
+    _kernel_start = .;
 
-    .text : {
+    .boot : ALIGN(4K) {
         KEEP(*(.multiboot))
+        *(.boot)
+    }
+
+    . += 0xC0000000;
+
+    .text : AT (ADDR(.text) - 0xC0000000) {
         *(.text)
         *(.rodata)
-    } :text
+    }
 
-    .data : ALIGN(4K)
+    .data : AT(ADDR(.data) - 0xC0000000) ALIGN(4K)
     {
         *(.data)
-    } :text
+    }
 
-    .bss : ALIGN(4K)
+    .bss : AT(ADDR(.bss) - 0xC0000000) ALIGN(4K)
     {
         *(COMMON)
         *(.bss)
-    } :text
+    }
+    _kernel_end = .;
 }
