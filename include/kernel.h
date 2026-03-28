@@ -8,7 +8,7 @@
 #include "gdt.h"
 
 void kernel_main(void);
-inline void halt()
+static inline void halt()
 {
     asm volatile("hlt");
 }

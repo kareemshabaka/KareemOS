@@ -3,9 +3,10 @@
 #include "kernel.h"
 #include "keyboard.h"
 #include "klib.h"
+#include "string.h"
+#include "types.h"
 #include "vga.h"
 #include <stddef.h>
-#include <string.h>
 
 char buf[BUFFER_SIZE];
 size_t history[MAX_HISTORY];
@@ -21,15 +22,26 @@ shell_command_t command_table[] = {
     {"clear", "Clear the screen", cmd_clear},
     {"reboot", "Restart the system", cmd_reboot},
     {"history", "Command history", cmd_history},
-    {0, 0, 0} // Null terminator to find the end of the array
+    {"echo", "Echo...echo...echo...", cmd_echo},
+    {0, 0, 0}
 };
 
 void execute_command()
 {
+    char *argv[MAX_ARGS];
+    char *token = strtok(buf, ' ');
+    int argc = 0;
+    while (token != NULL) {
+        argv[argc++] = token;
+        token = strtok(NULL, ' ');
+    }
+
+    argv[argc] = NULL;
+
     for (int i = 0; command_table[i].name != 0; i++) {
-        if (strcmp(buf, command_table[i].name) == 0) {
+        if (strcmp(argv[0], command_table[i].name) == 0) {
             store_history(i);
-            command_table[i].function(NULL);
+            command_table[i].function(argv);
             return;
         }
     }
@@ -53,7 +65,7 @@ void init_shell()
     kputs("shell> ");
 }
 
-void cmd_help([[maybe_unused]] char *args)
+void cmd_help([[maybe_unused]] char *args[])
 {
     kputs("Available commands:\n");
     for (int i = 0; command_table[i].name != 0; i++) {
@@ -61,16 +73,16 @@ void cmd_help([[maybe_unused]] char *args)
         kputs(command_table[i].name);
         kputs(" - ");
         kputs(command_table[i].description);
-        kputs("\n");
+        kputc('\n');
     }
 }
 
-void cmd_clear([[maybe_unused]] char *args)
+void cmd_clear([[maybe_unused]] char *args[])
 {
     clear_screen();
 }
 
-void cmd_reboot([[maybe_unused]] char *args)
+void cmd_reboot([[maybe_unused]] char *args[])
 {
     uint8_t good = 0x02;
     while (good & 0x02) {
@@ -79,7 +91,7 @@ void cmd_reboot([[maybe_unused]] char *args)
     outb(0x64, 0xFE);
 }
 
-void cmd_history([[maybe_unused]] char *args)
+void cmd_history([[maybe_unused]] char *args[])
 {
     size_t tmp = history_tail;
     size_t count = 1;
@@ -88,21 +100,31 @@ void cmd_history([[maybe_unused]] char *args)
         kprintn(count, 10);
         kputs(". ");
         kputs(command_table[idx].name);
-        kputs("\n");
+        kputc('\n');
         tmp = (tmp + 1) & HISTORY_MASK;
         count++;
     }
 }
 
+void cmd_echo(char *args[])
+{
+    int i = 1;
+    while (args[i] != NULL) {
+        kputs(args[i++]);
+        kputc(' ');
+    }
+    kputc('\n');
+}
+
 void shift_buffer(int dir)
 {
     if (dir == 1) {
-        for (size_t i = (BUFFER_SIZE - 1); i > pos; --i) {
+        for (size_t i = count; i > pos; --i) {
             buf[i] = buf[i - 1];
         }
     }
     else {
-        for (size_t i = pos; i < (BUFFER_SIZE - 1) - 1; ++i) {
+        for (size_t i = pos; i < count - 1; ++i) {
             buf[i] = buf[i + 1];
         }
     }

@@ -1,6 +1,6 @@
 SRCDIR = src
 INCDIR = include
-OBJDIR = build
+BUILDDIR = build
 
 CC = clang
 LD = ld.lld
@@ -9,11 +9,23 @@ QEMU = qemu-system-i386
 
 # -m32 is crucial for x86 32-bit development in a Linux environment
 # -fno-stack-protector is needed until you implement stack smashing protection
-CFLAGS = --target=i386-pc-none-elf -I$(INCDIR) -ffreestanding -O2 -Wall -Wextra \
-         -mno-sse -m32 -fno-stack-protector -nostdlib -fno-builtin -g
+BASE_CFLAGS = --target=i386-pc-none-elf -I$(INCDIR) -ffreestanding -Wall -Wextra \
+              -mno-sse -m32 -fno-stack-protector -nostdlib -fno-builtin -g
+
+CFLAGS = $(BASE_CFLAGS) -O2
 
 LDFLAGS = -T $(SRCDIR)/linker.ld
 ASFLAGS = --target=i386-pc-none-elf -m32 -c
+
+CONFIG ?= release
+
+ifeq ($(CONFIG), debug)
+    CFLAGS = $(BASE_CFLAGS) -O0
+    OBJDIR = $(BUILDDIR)/debug
+else
+    CFLAGS = $(BASE_CFLAGS) -O2
+    OBJDIR = $(BUILDDIR)/release
+endif
 
 C_SOURCES  = $(wildcard $(SRCDIR)/*.c)
 AS_SOURCES = $(wildcard $(SRCDIR)/*.s)
@@ -46,15 +58,17 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.s
 	@mkdir -p $(OBJDIR)
 	$(AS) $(ASFLAGS) $< -o $@
 
-QEMU_FLAGS = -kernel $(OBJDIR)/kernel.elf -no-reboot -no-shutdown \
+QEMU_FLAGS = -no-reboot -no-shutdown \
              -action reboot=reset -monitor stdio \
              -d guest_errors,cpu_reset -D qemu.log
 
-run: all
-	$(QEMU) $(QEMU_FLAGS)
-
-debug: all
-	$(QEMU) $(QEMU_FLAGS) -s -S
-
 clean:
-	rm -rf $(OBJDIR)
+	rm -rf $(BUILDDIR)
+
+run:
+	$(MAKE) CONFIG=release all
+	$(QEMU) -kernel $(BUILDDIR)/release/kernel.elf $(QEMU_FLAGS)
+
+debug:
+	$(MAKE) CONFIG=debug all
+	$(QEMU) -kernel $(BUILDDIR)/debug/kernel.elf $(QEMU_FLAGS) -s -S
